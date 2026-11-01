@@ -83,6 +83,7 @@ label{display:block;font-weight:650;font-size:14px;margin:12px 0 5px}
 .modal.on{display:grid;place-items:center}.mbox{width:100%;max-width:520px;margin:0}
 #toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120px);background:#1b1446;color:#fff;padding:12px 18px;border-radius:14px;z-index:60;transition:.3s;box-shadow:0 5px 0 #0c0726;max-width:90vw;text-align:center}#toast.on{transform:translate(-50%,0)}
 #printArea{display:none}
+.pb{page-break-after:always;break-after:page}
 .brand small.cr{font-size:10.5px;line-height:1.2;margin-top:2px}#ptitle{max-width:1000px;margin:0 auto 14px;font-size:22px}.ncr{margin:18px 8px 8px;padding-top:12px;border-top:1px dashed #d8d3f7;font-size:12px;color:var(--mut);text-align:center;line-height:1.5}.ncr b{color:var(--p2);font-size:14px}
 @media print{body>*:not(#printArea){display:none!important}#printArea{display:block;color:#000;background:#fff;padding:8mm}
 #printArea td,#printArea th{border:1px solid #000;padding:4px 6px;font-size:12px;vertical-align:top;text-align:left}
@@ -118,10 +119,10 @@ const nm=(col,id,key='nama')=>(db[col].find(x=>x.id===id)||{})[key]||'-';
 
 /* ===== penyimpanan lokal (offline-first) ===== */
 const KEY='kelasku3d.v1';
-const DEF={guru:{nama:'',nip:'',sekolah:'',npsn:'',kelas:'',tahun:'2026/2027',semester:'Ganjil',kepsek:'',nipKepsek:''},siswa:[],mapel:[],rpp:[],asesmen:[],jadwal:[],absensi:{},nilai:[],jurnal:[],catatan:{},setting:{api:'/api/generate'}};
+const DEF={guru:{nama:'',nip:'',sekolah:'',npsn:'',kelas:'',tahun:'2026/2027',semester:'Ganjil',kepsek:'',nipKepsek:''},siswa:[],mapel:[],rpp:[],asesmen:[],jadwal:[],absensi:{},nilai:[],jurnal:[],catatan:{},rapor:{},perangkat:[],soal:[],setting:{api:'/api/generate',kktp:70}};
 let db=load();
 function load(){try{const s=JSON.parse(localStorage.getItem(KEY)||'{}');return Object.assign(structuredClone(DEF),s)}catch{return structuredClone(DEF)}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch{toast('Penyimpanan penuh / diblokir browser')}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(db))}catch{toast('Penyimpanan penuh / diblokir browser')}schedAuto()}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>t.classList.remove('on'),2800)}
 
 /* ===== modul CRUD generik ===== */
@@ -134,8 +135,8 @@ asesmen:{label:'Rencana Asesmen',col:'asesmen',icon:'📝',fields:[{k:'judul',l:
   title:r=>r.judul,sub:r=>`${r.jenis||'-'} • ${nm('mapel',r.mapel)} • ${fmtD(r.tanggal)}`,body:r=>[r.teknik,r.tujuan].filter(Boolean).join('\n'),sort:(a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')},
 jadwal:{label:'Jadwal Kelas',col:'jadwal',icon:'🗓️',fields:[{k:'hari',l:'Hari',t:'select',o:HARI.slice(1,7),req:1},{k:'mulai',l:'Jam Mulai',t:'time',req:1},{k:'selesai',l:'Jam Selesai',t:'time',req:1},{k:'mapel',l:'Mata Pelajaran',t:'select',ref:'mapel',rl:'nama',req:1}],
   title:r=>nm('mapel',r.mapel),sub:r=>`${r.hari} • ${r.mulai}–${r.selesai}`,sort:(a,b)=>HARI.indexOf(a.hari)-HARI.indexOf(b.hari)||(a.mulai||'').localeCompare(b.mulai||'')},
-nilai:{label:'Nilai Siswa',col:'nilai',icon:'🏅',fields:[{k:'siswa',l:'Siswa',t:'select',ref:'siswa',rl:'nama',req:1},{k:'mapel',l:'Mata Pelajaran',t:'select',ref:'mapel',rl:'nama',req:1},{k:'jenis',l:'Jenis Nilai',t:'select',o:['Harian','Tugas','Proyek','UTS','UAS']},{k:'nilai',l:'Nilai (0–100)',t:'number',min:0,max:100,req:1},{k:'tanggal',l:'Tanggal',t:'date',d:'today'}],
-  title:r=>`${nm('siswa',r.siswa)} — ${r.nilai}`,sub:r=>`${nm('mapel',r.mapel)} • ${r.jenis||'-'} • ${fmtD(r.tanggal)}`,sort:(a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')},
+nilai:{label:'Nilai Siswa',col:'nilai',icon:'🏅',fields:[{k:'siswa',l:'Siswa',t:'select',ref:'siswa',rl:'nama',req:1},{k:'mapel',l:'Mata Pelajaran',t:'select',ref:'mapel',rl:'nama',req:1},{k:'jenis',l:'Jenis Nilai',t:'select',o:['Harian','Tugas','Proyek','UTS','UAS']},{k:'tp',l:'Materi / Tujuan Pembelajaran (untuk deskripsi rapor)'},{k:'nilai',l:'Nilai (0–100)',t:'number',min:0,max:100,req:1},{k:'tanggal',l:'Tanggal',t:'date',d:'today'}],
+  title:r=>`${nm('siswa',r.siswa)} — ${r.nilai}`,sub:r=>`${nm('mapel',r.mapel)} • ${r.jenis||'-'} • ${fmtD(r.tanggal)}${r.tp?' • '+r.tp:''}`,sort:(a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')},
 jurnal:{label:'Jurnal Mengajar',col:'jurnal',icon:'📖',fields:[{k:'tanggal',l:'Tanggal',t:'date',d:'today',req:1},{k:'mapel',l:'Mata Pelajaran',t:'select',ref:'mapel',rl:'nama'},{k:'materi',l:'Materi',t:'textarea',req:1},{k:'kegiatan',l:'Kegiatan Pembelajaran',t:'textarea'},{k:'refleksi',l:'Refleksi / Tindak Lanjut',t:'textarea'}],
   title:r=>`${fmtD(r.tanggal)} • ${nm('mapel',r.mapel)}`,sub:r=>r.materi,body:r=>r.refleksi?'Refleksi: '+r.refleksi:'',sort:(a,b)=>(b.tanggal||'').localeCompare(a.tanggal||'')}
 };
@@ -177,7 +178,9 @@ function DS(){
     jurnal:{label:'Jurnal Mengajar',icon:'📖',head:['Tanggal','Mapel','Materi','Kegiatan','Refleksi'],rows:[...db.jurnal].sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(j=>[fmtD(j.tanggal),nm('mapel',j.mapel),j.materi,j.kegiatan,j.refleksi])},
     jadwal:{label:'Jadwal Pelajaran',icon:'🗓️',head:['Hari','Jam','Mata Pelajaran'],rows:[...db.jadwal].sort(MODS.jadwal.sort).map(j=>[j.hari,`${j.mulai}–${j.selesai}`,nm('mapel',j.mapel)])},
     rpp:{label:'RPP Pembelajaran Mendalam',icon:'🧩',head:['Topik','Mapel','Kelas','Alokasi','Tujuan Pembelajaran'],rows:db.rpp.map(r=>[r.topik,r.mapel,r.kelas,r.alokasi,r.tp])},
-    asesmen:{label:'Rencana Asesmen',icon:'📝',head:['Tanggal','Judul','Mapel','Jenis','Teknik'],rows:[...db.asesmen].sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(a=>[fmtD(a.tanggal),a.judul,nm('mapel',a.mapel),a.jenis,a.teknik])}
+    asesmen:{label:'Rencana Asesmen',icon:'📝',head:['Tanggal','Judul','Mapel','Jenis','Teknik'],rows:[...db.asesmen].sort((a,b)=>(a.tanggal||'').localeCompare(b.tanggal||'')).map(a=>[fmtD(a.tanggal),a.judul,nm('mapel',a.mapel),a.jenis,a.teknik])},
+    rapor:{label:'Deskripsi Rapor',icon:'🎓',head:['No','Nama','Mata Pelajaran','Nilai','Capaian','Deskripsi'],rows:(()=>{let n=0;return s.flatMap(x=>raporData(x.id).map(d=>[++n,x.nama,d.nama,d.rata,predikat(d.rata),(db.rapor[x.id]&&db.rapor[x.id].m&&db.rapor[x.id].m[d.id])||'']))})()},
+    perangkat:{label:'ATP & KKTP',icon:'🗂️',head:['Mapel','Kelas','Smt','Topik','Tujuan Pembelajaran','JP','KKTP (Baik)'],rows:db.perangkat.flatMap(p=>p.items.map(i=>[p.mapel,p.kelas,p.semester,i.judul,i.tp,i.jp,(i.kktp||{}).baik]))}
   };
 }
 const tableHtml=(head,rows)=>`<table><thead><tr>${head.map(h=>`<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c)}</td>`).join('')}</tr>`).join('')||`<tr><td colspan="${head.length}">Belum ada data</td></tr>`}</tbody></table>`;
@@ -343,7 +346,7 @@ dashboard:{label:'Dashboard',icon:'🏠',render(v){
   const c={H:0,S:0,I:0,A:0};Object.values(db.absensi[today()]||{}).forEach(x=>c[x]++);
   v.innerHTML=`<div class="wrap"><div class="hero tilt"><div><small>${h}, ${fmtD(today())}</small><h2>Halo, ${esc(g.nama||'Bapak/Ibu Guru')} 👋</h2><p>Kelas ${esc(g.kelas||'-')} • Fase ${faseOf(g.kelas)||'-'} • TA ${esc(g.tahun)} ${esc(g.semester)}</p><button class="btn a" data-act="rppNew">✨ Buat RPP dengan AI</button></div><div class="scene"><div class="cube">${['📚','✏️','🔢','🎨','🌏','🔬'].map(x=>`<i>${x}</i>`).join('')}</div></div></div>
   <div class="grid">${[['siswa','🧒',db.siswa.length,'Siswa'],['mapel','📚',db.mapel.length,'Mata Pelajaran'],['rpp','🧩',db.rpp.length,'RPP'],['jurnal','📖',db.jurnal.length,'Jurnal']].map(([k,i,n,l])=>`<a class="card tilt stat" href="#/${k}"><span>${i}</span><b>${n}</b><small>${l}</small></a>`).join('')}</div>
-  <div class="g2"><div class="card tilt"><h3>🗓️ Jadwal Hari Ini</h3>${js.length?js.map(j=>`<p><b>${j.mulai}–${j.selesai}</b> &nbsp;${esc(nm('mapel',j.mapel))}</p>`).join(''):`<p class="mut">Tidak ada jadwal untuk ${h}.</p>`}</div>
+  ${backupBanner()}<div class="g2"><div class="card tilt"><h3>🗓️ Jadwal Hari Ini</h3>${js.length?js.map(j=>`<p><b>${j.mulai}–${j.selesai}</b> &nbsp;${esc(nm('mapel',j.mapel))}</p>`).join(''):`<p class="mut">Tidak ada jadwal untuk ${h}.</p>`}</div>
   <div class="card tilt"><h3>✅ Absensi Hari Ini</h3><div><span class="chip c-H">Hadir ${c.H}</span><span class="chip c-S">Sakit ${c.S}</span><span class="chip c-I">Izin ${c.I}</span><span class="chip c-A">Alpa ${c.A}</span></div><a class="btn s t" style="display:inline-block;text-decoration:none;margin-top:6px" href="#/absensi">Isi Absensi</a></div></div>
   <div class="card tilt"><h3>💡 Tips Kurikulum Merdeka</h3><p>${TIPS[new Date().getDate()%TIPS.length]}</p></div></div>`}},
 guru:{label:'Data Guru',icon:'👩‍🏫',render(v){
@@ -367,14 +370,232 @@ wali:{label:'Wali Kelas',icon:'🏫',render(v){
   v.innerHTML=`<div class="wrap"><div class="grid"><div class="card tilt stat"><span>🏫</span><b>${esc(g.kelas||'-')}</b><small>Kelas</small></div><div class="card tilt stat"><span>👦</span><b>${L}</b><small>Laki-laki</small></div><div class="card tilt stat"><span>👧</span><b>${P}</b><small>Perempuan</small></div></div>
   <h3 style="margin-bottom:12px">Catatan Perkembangan Siswa</h3>${db.siswa.length?[...db.siswa].sort((a,b)=>a.nama.localeCompare(b.nama)).map(x=>`<div class="card"><b>${esc(x.nama)}</b><textarea data-cat="${x.id}" placeholder="Karakter, kemajuan belajar, catatan untuk orang tua…">${esc(db.catatan[x.id]||'')}</textarea></div>`).join(''):`<div class="card empty"><b>🧒</b>Belum ada data siswa.</div>`}</div>`}},
 setting:{label:'Pengaturan',icon:'⚙️',render(v){
-  v.innerHTML=`<div class="wrap"><div class="card"><h3>🤖 Alamat AI</h3><p class="mut">Endpoint fungsi Cloudflare untuk pembuatan RPP. Biarkan <code>/api/generate</code> jika aplikasi dibuka dari alamat pages.dev. Jika file dibuka langsung dari HP, isi alamat lengkap, mis. <code>https://nama-proyek.pages.dev/api/generate</code>.</p><input id="api" value="${esc(db.setting.api)}"><button class="btn t s" style="margin-top:12px" data-act="saveApi">Simpan</button></div>
+  v.innerHTML=`<div class="wrap"><div class="card"><h3>🤖 Alamat AI</h3><p class="mut">Endpoint fungsi Cloudflare untuk pembuatan RPP. Biarkan <code>/api/generate</code> jika aplikasi dibuka dari alamat Cloudflare Anda (workers.dev). Jika file dibuka langsung dari HP, isi alamat lengkap, mis. <code>https://administrasi-kelasku.AKUN.workers.dev/api/generate</code>.</p><input id="api" value="${esc(db.setting.api)}"><button class="btn t s" style="margin-top:12px" data-act="saveApi">Simpan</button></div>
   <div class="card"><h3>💾 Cadangan Data</h3><p class="mut">Data tersimpan di perangkat ini. Unduh cadangan secara berkala.</p><div class="row" style="margin-top:12px"><button class="btn" data-act="backup">⬇ Unduh Cadangan</button><label class="btn a" style="margin:0;cursor:pointer">⬆ Pulihkan<input type="file" id="rf" accept=".json" hidden></label><button class="btn r" data-act="reset">Hapus Semua</button></div></div>
+  <div class="card"><h3>🎯 Penilaian</h3><label>Batas ketuntasan (KKTP) untuk deskripsi rapor</label><input id="kktp" type="number" min="0" max="100" value="${kktp()}"><button class="btn t s" style="margin-top:12px" data-act="saveKktp">Simpan</button></div>
+  <div class="card"><h3>☁️ Cadangan Cloud</h3><p class="mut">${bkText()}</p><div class="row" style="margin:12px 0"><button class="btn t" data-act="shareBackup">📤 Bagikan Cadangan</button></div><small class="mut">Pilih Google Drive, WhatsApp, atau email dari menu bagikan HP. Tanpa pengaturan tambahan.</small>
+  <h4 style="margin:18px 0 6px">Google Drive otomatis (opsional)</h4><label>Google Client ID</label><input id="gid" value="${esc(db.setting.gClientId||'')}" placeholder="xxxx.apps.googleusercontent.com"><div class="row" style="margin-top:10px"><button class="btn g s" data-act="saveGid">Simpan ID</button><button class="btn s" data-act="driveUp">☁️ Cadangkan ke Drive</button><button class="btn a s" data-act="driveDown">☁️ Pulihkan dari Drive</button></div><label style="display:flex;gap:10px;align-items:center;margin-top:12px;font-weight:600"><input type="checkbox" data-autod style="width:auto;box-shadow:none" ${db.setting.autoDrive?'checked':''}>Cadangkan otomatis ke Drive setiap ada perubahan (selama aplikasi terbuka)</label>
+  <details style="margin-top:12px"><summary><b>Cara mendapatkan Client ID</b></summary><ol style="margin:8px 0 0 18px;font-size:13px;line-height:1.6"><li>Buka console.cloud.google.com, buat project baru.</li><li>APIs &amp; Services → Library → aktifkan <b>Google Drive API</b>.</li><li>OAuth consent screen: pilih External, isi nama aplikasi, tambahkan email Anda di <b>Test users</b>.</li><li>Credentials → Create Credentials → OAuth client ID → <b>Web application</b>; pada Authorized JavaScript origins isi alamat situs Anda (https://administrasi-kelasku.AKUN.workers.dev).</li><li>Salin Client ID ke kotak di atas, lalu buka aplikasi dari alamat tersebut.</li></ol><small class="mut">Cadangan disimpan di folder tersembunyi milik aplikasi di Drive Anda. Hanya jalan dari alamat Cloudflare Anda (workers.dev), bukan dari file lokal.</small></details></div>
   <div class="card"><h3>ℹ️ Tentang</h3><p>KelasKu • Aplikasi administrasi guru SD (Kurikulum Merdeka) • bekerja offline di perangkat Anda.</p><p class="mut" style="margin-top:8px">Design by Akhmad Fitra Harry, S.Pd</p></div></div>`;
   $('#rf').onchange=async e=>{try{db=Object.assign(structuredClone(DEF),JSON.parse(await e.target.files[0].text()));save();ini();toast('Data dipulihkan ✅');go()}catch{toast('File cadangan tidak valid')}}}}
 };
 let absDate='';
+/* ===== util tambahan ===== */
+async function postJ(url,body,ms=75000){const c=new AbortController(),tm=setTimeout(()=>c.abort(),ms);try{const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:c.signal});const j=await r.json();if(!j.ok)throw new Error(j.error||'gagal');return j.data}finally{clearTimeout(tm)}}
+const tugas=(task,body,ms)=>postJ(apiBase('tugas'),{task,...body},ms);
+const printRaw=h=>{$('#printArea').innerHTML=h;setTimeout(()=>window.print(),150)};
+const sortSiswa=()=>[...db.siswa].sort((a,b)=>a.nama.localeCompare(b.nama));
+const pickKey=(o,name)=>{if(!o||typeof o!=='object')return'';if(o[name])return o[name];const k=Object.keys(o).find(x=>x.toLowerCase().trim()===String(name).toLowerCase().trim());return k?o[k]:''};
+const kktp=()=>+db.setting.kktp||70;
+const predikat=n=>n>=90?'Sangat Baik':n>=80?'Baik':n>=kktp()?'Cukup':'Perlu Bimbingan';
+const dtab=(...a)=>tableHtml(...a);
+const hasil=(title)=>`<h3 style="text-align:center;margin:6px 0">${title}</h3>`;
+async function busy(btn,txt,fn){const old=btn.textContent;btn.disabled=true;btn.textContent=txt;try{return await fn()}finally{btn.disabled=false;btn.textContent=old}}
+
+/* ===== 1. RAPOR: deskripsi capaian otomatis ===== */
+let raporSid='';
+function raporData(sid){
+  return db.mapel.map(m=>{
+    const ns=db.nilai.filter(n=>n.siswa===sid&&n.mapel===m.id&&n.nilai!==''&&n.nilai!=null);if(!ns.length)return null;
+    const rata=Math.round(ns.reduce((a,n)=>a+ +n.nilai,0)/ns.length*10)/10,by={};
+    ns.forEach(n=>{const k=(n.tp||'').trim();if(k)(by[k]=by[k]||[]).push(+n.nilai)});
+    const arr=Object.entries(by).map(([tp,v])=>({tp,nilai:Math.round(v.reduce((a,b)=>a+b,0)/v.length)})).sort((a,b)=>b.nilai-a.nilai);
+    return{id:m.id,nama:m.nama,rata,tertinggi:arr[0]||null,terendah:arr.length>1?arr[arr.length-1]:null}
+  }).filter(Boolean)
+}
+function localRapor(s,data){
+  const n=s.nama.trim().split(/\s+/)[0],k=kktp(),m={};
+  data.forEach(d=>{
+    const p=predikat(d.rata).toLowerCase();let t;
+    if(d.tertinggi){
+      t=`Ananda ${n} menunjukkan capaian ${p} pada mata pelajaran ${d.nama}, terutama dalam ${d.tertinggi.tp}.`;
+      if(d.terendah)t+=d.terendah.nilai<k?` Ananda masih perlu bimbingan dan latihan lebih lanjut dalam ${d.terendah.tp}.`:` Ananda juga sudah baik dalam ${d.terendah.tp}.`;
+    }else t=d.rata>=k?`Ananda ${n} menunjukkan capaian ${p} pada mata pelajaran ${d.nama} dan sudah mencapai ketuntasan. Terus pertahankan semangat belajarnya.`:`Ananda ${n} masih perlu bimbingan lebih lanjut pada mata pelajaran ${d.nama}. Pendampingan dan latihan rutin akan membantu ananda berkembang.`;
+    m[d.id]=t});
+  const all=data.reduce((a,d)=>a+d.rata,0)/data.length;
+  return{m,wali:`Ananda ${n} menunjukkan perkembangan belajar yang ${all>=80?'sangat baik':all>=kktp()?'baik':'perlu terus didampingi'}. Dukungan belajar di rumah akan membantu ananda semakin percaya diri.`};
+}
+async function raporGen(sid){
+  const s=db.siswa.find(x=>x.id===sid),data=raporData(sid);if(!s||!data.length)return null;
+  const R=db.rapor[sid]=db.rapor[sid]||{m:{},wali:''},loc=localRapor(s,data);let res=null;
+  try{res=await tugas('rapor',{nama:s.nama,jk:s.jk,kelas:db.guru.kelas,kktp:kktp(),mapel:data.map(({nama,rata,tertinggi,terendah})=>({nama,rata,tertinggi,terendah})),catatan:db.catatan[sid]||''},70000)}catch(e){res=null}
+  const ai=!!(res&&res.deskripsi);
+  data.forEach(d=>{const t=ai?norm(pickKey(res.deskripsi,d.nama)):'';R.m[d.id]=t.trim()||loc.m[d.id]});
+  R.wali=(ai&&norm(res.catatan_wali).trim())||loc.wali;save();return ai?'ai':'local'
+}
+function raporHtml(sid){
+  const s=db.siswa.find(x=>x.id===sid),g=db.guru,data=raporData(sid),R=db.rapor[sid]||{m:{},wali:''};
+  const info=[['Nama',s.nama],['NIS',s.nis||'-'],['Kelas',g.kelas||'-'],['Semester',g.semester+' • TA '+g.tahun]].map(([a,b])=>`<tr><td style="border:0" width="20%"><b>${a}</b></td><td style="border:0">: ${esc(b)}</td></tr>`).join('');
+  return hasil('LAPORAN CAPAIAN HASIL BELAJAR')+`<table style="border:0;margin:6px 0">${info}</table>`+dtab(['No','Mata Pelajaran','Nilai','Capaian Kompetensi'],data.map((d,i)=>[i+1,d.nama,d.rata,R.m[d.id]||'']))+`<p style="margin-top:10px"><b>Catatan Wali Kelas</b></p><p class="pw" style="border:1px solid #000;padding:6px;min-height:50px">${esc(R.wali||'')}</p>`
+}
+defs.rapor={label:'Rapor (Deskripsi AI)',icon:'🎓',render(v){
+  const S=sortSiswa();
+  if(!S.length||!db.mapel.length||!db.nilai.length){v.innerHTML=`<div class="wrap"><div class="card empty"><b>🎓</b>Isi dulu Data Siswa, Mata Pelajaran, dan Nilai Siswa. Di Nilai Siswa, isi kolom “Materi / Tujuan Pembelajaran” agar deskripsi rapor lebih spesifik.</div></div>`;return}
+  if(!S.some(s=>s.id===raporSid))raporSid=S[0].id;
+  const sid=raporSid,data=raporData(sid),R=db.rapor[sid]||{m:{},wali:''};
+  const all=data.length?Math.round(data.reduce((a,d)=>a+d.rata,0)/data.length*10)/10:0;
+  v.innerHTML=`<div class="wrap"><div class="card"><label>Pilih Siswa</label><select id="rsid">${S.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${esc(s.nama)}</option>`).join('')}</select>
+  <div class="row" style="margin-top:14px"><button class="btn a" data-act="raporAI">✨ Buat Deskripsi (siswa ini)</button><button class="btn" data-act="raporAll">✨ Untuk Semua Siswa</button></div>
+  <p class="mut" style="font-size:13px;margin-top:10px">Rata-rata: <b>${all||'-'}</b>${all?' ('+predikat(all)+')':''} • Batas ketuntasan ${kktp()} (ubah di Pengaturan)</p></div>
+  ${data.length?data.map(d=>`<div class="card"><div class="row" style="justify-content:space-between"><b>${esc(d.nama)}</b><span class="chip ${d.rata>=kktp()?'c-H':'c-A'}">${d.rata} • ${predikat(d.rata)}</span></div><small class="mut">${d.tertinggi?'Terkuat: '+esc(d.tertinggi.tp):'Materi/TP belum dicatat di Nilai Siswa'}${d.terendah?' • Perlu bimbingan: '+esc(d.terendah.tp):''}</small><textarea data-rd="${d.id}" placeholder="Deskripsi capaian…" style="margin-top:8px">${esc(R.m[d.id]||'')}</textarea></div>`).join(''):'<div class="card empty">Belum ada nilai untuk siswa ini.</div>'}
+  <div class="card"><label>Catatan Wali Kelas</label><textarea data-rw="1">${esc(R.wali||'')}</textarea></div>
+  <div class="row"><button class="btn" data-act="raporPrint">🖨 Cetak Siswa Ini</button><button class="btn g" data-act="raporPrintAll">🖨 Cetak Semua Siswa</button></div></div>`;
+  v.querySelectorAll('textarea').forEach(grow)}};
+function raporInput(t){const sid=raporSid,R=db.rapor[sid]=db.rapor[sid]||{m:{},wali:''};if(t.dataset.rd)R.m[t.dataset.rd]=t.value;else R.wali=t.value;grow(t);clearTimeout(raporInput.t);raporInput.t=setTimeout(save,500)}
+
+/* ===== 2. PERANGKAT AJAR: ATP, KKTP, Prota, Promes ===== */
+let perEdit=null;
+const BULAN1=['Juli','Agustus','September','Oktober','November','Desember'],BULAN2=['Januari','Februari','Maret','April','Mei','Juni'];
+const blankPer=()=>({id:null,mapel:'',kelas:db.guru.kelas||'1',semester:db.guru.semester==='Genap'?'2':'1',jpMinggu:4,minggu:16,topikTxt:'',cp:'',items:[]});
+const perTot=p=>(+p.jpMinggu||1)*(+p.minggu||16);
+function newItem(judul){return{judul,materi:judul,tp:`Peserta didik mampu memahami dan menerapkan ${judul}.`,jp:0,kktp:{perlu:`Belum mampu menjelaskan ${judul} meskipun sudah dibimbing.`,cukup:`Mampu menjelaskan sebagian ${judul} dengan bantuan.`,baik:`Mampu menjelaskan dan menerapkan ${judul} secara mandiri.`,sangat:`Mampu menjelaskan, menerapkan, dan memberi contoh lain tentang ${judul}.`},asesmen:'Formatif (observasi, lembar kerja) dan sumatif (tes tertulis)'}}
+function parseTopik(txt){return String(txt||'').split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const [j,jp]=l.split('|').map(s=>s.trim());return{judul:j,jp:+jp||0}})}
+function distJp(items,total){
+  if(!items.length)return;const w=items.map(i=>Math.max(0,+i.jp||0)),sum=w.reduce((a,b)=>a+b,0),base=sum?w:items.map(()=>1),bs=base.reduce((a,b)=>a+b,0);
+  const raw=base.map(x=>x*total/bs),fl=raw.map(Math.floor);let rem=total-fl.reduce((a,b)=>a+b,0);
+  raw.map((x,i)=>[x-fl[i],i]).sort((a,b)=>b[0]-a[0]).forEach(([,i])=>{if(rem>0){fl[i]++;rem--}});items.forEach((it,i)=>it.jp=fl[i])
+}
+function weekPlan(p){const W=+p.minggu||16,jm=+p.jpMinggu||1;let c=0;return p.items.map(it=>{const w=Math.max(1,Math.round((+it.jp||0)/jm)),s=Math.min(c,W-1);c+=w;return[s,Math.min(Math.max(c,s+1),W)]})}
+function promesHtml(p){
+  const W=+p.minggu||16,bl=p.semester==='2'?BULAN2:BULAN1,plan=weekPlan(p);
+  const cnt=bl.map((_,m)=>{let c=0;for(let w=0;w<W;w++)if(Math.floor(w*6/W)===m)c++;return c});
+  const h1=`<tr><th rowspan="2">No</th><th rowspan="2">Topik / Materi</th><th rowspan="2">JP</th>${bl.map((b,i)=>cnt[i]?`<th colspan="${cnt[i]}">${b}</th>`:'').join('')}</tr>`;
+  const h2=`<tr>${Array.from({length:W},(_,w)=>`<th>${w+1}</th>`).join('')}</tr>`;
+  const body=p.items.map((it,i)=>`<tr><td>${i+1}</td><td>${esc(it.judul)}</td><td>${esc(it.jp)}</td>${Array.from({length:W},(_,w)=>`<td style="text-align:center">${w>=plan[i][0]&&w<plan[i][1]?'■':''}</td>`).join('')}</tr>`).join('');
+  return `<table style="font-size:10px"><thead>${h1}${h2}</thead><tbody>${body}</tbody></table>`
+}
+const perHead=p=>`<p class="pw" style="margin:6px 0">Mata Pelajaran : ${esc(p.mapel)}\nKelas / Fase : ${esc(p.kelas)} / ${faseOf(p.kelas)}\nSemester : ${p.semester==='2'?'2 (Genap)':'1 (Ganjil)'}\nTahun Ajaran : ${esc(db.guru.tahun)}\nAlokasi : ${esc(p.jpMinggu)} JP/minggu × ${esc(p.minggu)} minggu</p>`;
+const PERDOC={
+  prota:p=>{
+    const rs=[...db.perangkat.filter(x=>x.id!==p.id&&x.mapel.trim().toLowerCase()===p.mapel.trim().toLowerCase()&&x.kelas==p.kelas),p].sort((a,b)=>a.semester-b.semester);let n=0;
+    const rows=rs.flatMap(r=>r.items.map(it=>[++n,r.semester==='2'?'2 (Genap)':'1 (Ganjil)',it.judul,it.tp,it.jp]));
+    rows.push(['','','JUMLAH JP','',rs.reduce((a,r)=>a+r.items.reduce((x,i)=>x+(+i.jp||0),0),0)]);
+    return hasil('PROGRAM TAHUNAN (PROTA)')+perHead(p)+dtab(['No','Semester','Topik / Materi','Tujuan Pembelajaran','Alokasi JP'],rows)},
+  promes:p=>hasil('PROGRAM SEMESTER (PROMES)')+perHead(p)+promesHtml(p),
+  atp:p=>hasil('ALUR TUJUAN PEMBELAJARAN (ATP)')+perHead(p)+dtab(['No','Tujuan Pembelajaran','Materi Pokok','Alokasi JP','Asesmen'],p.items.map((it,i)=>[i+1,it.tp,it.materi,it.jp,it.asesmen])),
+  kktp:p=>hasil('KRITERIA KETERCAPAIAN TUJUAN PEMBELAJARAN (KKTP)')+perHead(p)+dtab(['No','Tujuan Pembelajaran','Perlu Bimbingan','Cukup','Baik','Sangat Baik'],p.items.map((it,i)=>[i+1,it.tp,it.kktp.perlu,it.kktp.cukup,it.kktp.baik,it.kktp.sangat]))
+};
+function perPage(v){
+  if(!perEdit){
+    v.innerHTML=`<div class="wrap"><div class="hero tilt"><div><h2>Perangkat Ajar</h2><p>Susun ATP, KKTP, Program Tahunan, dan Program Semester dari satu data, dibantu AI, siap cetak.</p><button class="btn a" data-act="perNew">✨ Buat Perangkat Ajar</button></div></div>
+    ${db.perangkat.length?[...db.perangkat].reverse().map(r=>`<div class="card tilt item"><div class="ib">🗂️</div><div class="im"><b>${esc(r.mapel)} • Kelas ${esc(r.kelas)}</b><small>Semester ${esc(r.semester)} • ${r.items.length} topik • ${fmtD(r.updated)}</small></div><div class="ia"><button class="btn s g" data-act="perOpen" data-id="${r.id}">Buka</button><button class="btn s r" data-act="perDel" data-id="${r.id}">🗑</button></div></div>`).join(''):'<div class="card empty"><b>🗂️</b>Belum ada perangkat ajar.</div>'}</div>`;return}
+  const p=perEdit,tot=p.items.reduce((a,i)=>a+(+i.jp||0),0),tgt=perTot(p);
+  v.innerHTML=`<div class="wrap"><div class="card"><h3>1 · Data Semester</h3><div class="g2">
+   <div><label>Mata Pelajaran</label><input data-pf="mapel" list="dlm2" value="${esc(p.mapel)}" placeholder="mis. Matematika"><datalist id="dlm2">${db.mapel.map(m=>`<option value="${esc(m.nama)}">`).join('')}</datalist></div>
+   <div><label>Kelas</label><select data-pf="kelas">${KELAS.map(k=>`<option ${k==p.kelas?'selected':''}>${k}</option>`).join('')}</select></div>
+   <div><label>Semester</label><select data-pf="semester"><option value="1" ${p.semester==='1'?'selected':''}>1 (Ganjil)</option><option value="2" ${p.semester==='2'?'selected':''}>2 (Genap)</option></select></div>
+   <div><label>JP per minggu</label><input type="number" min="1" max="40" data-pf="jpMinggu" value="${esc(p.jpMinggu)}"></div>
+   <div><label>Minggu efektif</label><input type="number" min="4" max="30" data-pf="minggu" value="${esc(p.minggu)}"></div></div>
+   <label>Daftar topik / bab (satu per baris, boleh “Judul | JP”; kosongkan agar AI mengusulkan)</label><textarea data-pf="topikTxt">${esc(p.topikTxt)}</textarea>
+   <label>Capaian Pembelajaran / catatan (opsional, tempel dari kurikulum)</label><textarea data-pf="cp">${esc(p.cp)}</textarea>
+   <div class="row" style="margin-top:14px"><button class="btn a" data-act="perAI">✨ Susun dengan AI</button><button class="btn g" data-act="perLocal">🧱 Susun dari daftar topik</button></div></div>
+  <div class="card"><h3>2 · Topik, Tujuan & KKTP</h3><p class="mut" style="font-size:13px">Total JP: <b>${tot}</b> / target ${tgt} ${tot!==tgt&&p.items.length?'<button class="btn s g" data-act="perFit">⚖️ Samakan</button>':''}</p>
+  ${p.items.length?p.items.map((it,i)=>`<div class="sec" style="margin-top:14px"><div class="row" style="justify-content:space-between"><b>Topik ${i+1}</b><button class="btn s r" data-act="perItemDel" data-i="${i}">🗑</button></div>
+   <label>Judul / Bab</label><input data-pi="${i}.judul" value="${esc(it.judul)}"><label>Materi pokok</label><input data-pi="${i}.materi" value="${esc(it.materi)}">
+   <label>Tujuan Pembelajaran</label><textarea data-pi="${i}.tp" style="min-height:70px">${esc(it.tp)}</textarea><div class="g2"><div><label>Alokasi JP</label><input type="number" min="0" data-pi="${i}.jp" value="${esc(it.jp)}"></div><div><label>Asesmen</label><input data-pi="${i}.asesmen" value="${esc(it.asesmen)}"></div></div>
+   <details><summary><b>Kriteria ketercapaian (KKTP)</b></summary>${[['perlu','Perlu Bimbingan'],['cukup','Cukup'],['baik','Baik'],['sangat','Sangat Baik']].map(([k,l])=>`<label>${l}</label><textarea data-pi="${i}.kktp.${k}" style="min-height:60px">${esc(it.kktp[k])}</textarea>`).join('')}</details></div>`).join(''):'<div class="empty">Belum ada topik. Susun dengan AI atau dari daftar topik.</div>'}
+  <button class="btn g s" style="margin-top:14px" data-act="perItemAdd">＋ Tambah Topik</button></div>
+  <div class="card"><h3>3 · Cetak</h3><div class="row"><button class="btn s" data-act="perPrint" data-k="prota">🖨 Prota</button><button class="btn s" data-act="perPrint" data-k="promes">🖨 Promes</button><button class="btn s" data-act="perPrint" data-k="atp">🖨 ATP</button><button class="btn s" data-act="perPrint" data-k="kktp">🖨 KKTP</button></div></div>
+  <div class="row"><button class="btn t" data-act="perSave">💾 Simpan</button><button class="btn g" data-act="perBack">← Daftar</button></div></div>`;
+  v.querySelectorAll('textarea').forEach(grow)
+}
+function setPi(t){const [i,...f]=t.dataset.pi.split('.'),it=perEdit.items[+i];if(!it)return;if(f.length===2)it[f[0]][f[1]]=t.value;else it[f[0]]=f[0]==='jp'?(+t.value||0):t.value;if(t.tagName==='TEXTAREA')grow(t)}
+defs.perangkat={label:'Perangkat Ajar',icon:'🗂️',render:perPage};
+
+/* ===== 3. SOAL & LKPD dari RPP ===== */
+let soalEdit=null;
+const blankSoal=()=>({id:null,rppId:'',mapel:'',kelas:db.guru.kelas||'3',topik:'',tp:'',sumber_teks:'',pg:10,isian:5,uraian:2,level:'Campuran C1-C4',soal:'',kunci:'',kisi:[],lkpd:'',updated:''});
+const stripOpt=s=>norm(s).replace(/^\s*[A-Da-d][.)]\s+/,'').trim();
+const asArr=x=>Array.isArray(x)?x:[];
+function buildSoal(d,r){
+  const soal=[],kunci=[],kisi=[],pg=asArr(r.pg),is=asArr(r.isian),ur=asArr(r.uraian),tp=x=>norm(x.tp).trim()||d.tp||d.topik;
+  if(pg.length){soal.push('A. PILIHAN GANDA\nPilihlah satu jawaban yang paling benar!\n');kunci.push('A. PILIHAN GANDA');
+    pg.forEach((x,i)=>{soal.push(`${i+1}. ${norm(x.q)}\n   A. ${stripOpt(x.a)}\n   B. ${stripOpt(x.b)}\n   C. ${stripOpt(x.c)}\n   D. ${stripOpt(x.d)}\n`);kunci.push(`${i+1}. ${norm(x.kunci).trim().toUpperCase().slice(0,1)}`);kisi.push([tp(x),norm(x.level),'Pilihan Ganda',`PG ${i+1}`])})}
+  if(is.length){soal.push('B. ISIAN SINGKAT\nIsilah titik-titik berikut dengan jawaban yang tepat!\n');kunci.push('\nB. ISIAN SINGKAT');
+    is.forEach((x,i)=>{soal.push(`${i+1}. ${norm(x.q)} ..........\n`);kunci.push(`${i+1}. ${norm(x.kunci)}`);kisi.push([tp(x),norm(x.level),'Isian Singkat',`Isian ${i+1}`])})}
+  if(ur.length){soal.push('C. URAIAN\nJawablah pertanyaan berikut dengan jelas!\n');kunci.push('\nC. URAIAN');
+    ur.forEach((x,i)=>{soal.push(`${i+1}. ${norm(x.q)}\n`);kunci.push(`${i+1}. ${norm(x.kunci)}`);kisi.push([tp(x),norm(x.level),'Uraian',`Uraian ${i+1}`])})}
+  d.soal=soal.join('\n').trim();d.kunci=kunci.join('\n').trim();d.kisi=kisi.map((k,i)=>[i+1,...k])
+}
+function buildLkpd(d,r){
+  const L=x=>asArr(x).map((s,i)=>`${i+1}. ${norm(s)}`).join('\n'),parts=[`LKPD: ${norm(r.judul)||d.topik}`,'Nama Kelompok : .......................\nAnggota : ..........................','Tujuan\n'+norm(r.tujuan),'Petunjuk\n'+norm(r.petunjuk)];
+  if(r.alat_bahan)parts.push('Alat dan Bahan\n'+norm(r.alat_bahan));
+  parts.push('Kegiatan\n'+L(r.kegiatan),'Pertanyaan\n'+L(r.pertanyaan));if(r.refleksi)parts.push('Refleksi\n'+norm(r.refleksi));
+  d.lkpd=parts.join('\n\n')
+}
+const soalHead=d=>`<p class="pw" style="margin:6px 0">Mata Pelajaran : ${esc(d.mapel)}\nTopik : ${esc(d.topik)}\nKelas : ${esc(d.kelas)}</p>`;
+const SOALDOC={
+  soal:d=>hasil('SOAL EVALUASI')+soalHead(d)+`<p>Nama : ........................................ &nbsp; No. Absen : ........</p><p class="pw">${esc(d.soal)}</p>`,
+  kunci:d=>hasil('KUNCI JAWABAN & KISI-KISI')+soalHead(d)+dtab(['No','Tujuan Pembelajaran','Level','Bentuk','No. Soal'],d.kisi)+`<p style="margin-top:10px"><b>Kunci Jawaban</b></p><p class="pw">${esc(d.kunci)}</p>`,
+  lkpd:d=>`<p class="pw">${esc(d.lkpd)}</p>`
+};
+function soalPage(v){
+  if(!soalEdit){
+    v.innerHTML=`<div class="wrap"><div class="hero tilt"><div><h2>Soal & LKPD</h2><p>Buat soal evaluasi, kunci jawaban, kisi-kisi, dan LKPD dari RPP atau materi buku Anda dengan bantuan AI.</p><button class="btn a" data-act="soalNew">✨ Buat Soal & LKPD</button></div></div>
+    ${db.soal.length?[...db.soal].reverse().map(r=>`<div class="card tilt item"><div class="ib">🧪</div><div class="im"><b>${esc(r.topik)}</b><small>${esc(r.mapel)} • Kelas ${esc(r.kelas)} • ${fmtD(r.updated)}</small></div><div class="ia"><button class="btn s g" data-act="soalOpen" data-id="${r.id}">Buka</button><button class="btn s r" data-act="soalDel" data-id="${r.id}">🗑</button></div></div>`).join(''):'<div class="card empty"><b>🧪</b>Belum ada soal.</div>'}</div>`;return}
+  const d=soalEdit,lv=['Campuran C1-C4','Mudah (C1-C2)','Sedang (C2-C3)','Menantang (C3-C4)'];
+  v.innerHTML=`<div class="wrap"><div class="card"><h3>1 · Bahan Soal</h3>
+   <label>Ambil dari RPP (opsional)</label><select id="srpp"><option value="">— tanpa RPP —</option>${db.rpp.map(r=>`<option value="${r.id}" ${r.id===d.rppId?'selected':''}>${esc(r.topik)} — ${esc(r.mapel)}</option>`).join('')}</select>
+   <div class="g2"><div><label>Mata Pelajaran</label><input data-sf="mapel" value="${esc(d.mapel)}"></div><div><label>Kelas</label><select data-sf="kelas">${KELAS.map(k=>`<option ${k==d.kelas?'selected':''}>${k}</option>`).join('')}</select></div></div>
+   <label>Topik</label><input data-sf="topik" value="${esc(d.topik)}"><label>Tujuan Pembelajaran</label><textarea data-sf="tp" style="min-height:70px">${esc(d.tp)}</textarea>
+   <label>Teks sumber materi (opsional; soal akan bersumber dari sini)</label><textarea data-sf="sumber_teks" placeholder="Tempel materi dari buku atau ambil otomatis dari RPP">${esc(d.sumber_teks)}</textarea>
+   <div class="g2"><div><label>Pilihan ganda</label><input type="number" min="0" max="20" data-sf="pg" value="${esc(d.pg)}"></div><div><label>Isian singkat</label><input type="number" min="0" max="10" data-sf="isian" value="${esc(d.isian)}"></div><div><label>Uraian</label><input type="number" min="0" max="5" data-sf="uraian" value="${esc(d.uraian)}"></div><div><label>Tingkat kesulitan</label><select data-sf="level">${lv.map(x=>`<option ${x===d.level?'selected':''}>${x}</option>`).join('')}</select></div></div>
+   <div class="row" style="margin-top:14px"><button class="btn a" data-act="soalAI">✨ Buat Soal</button><button class="btn" data-act="lkpdAI">✨ Buat LKPD</button></div></div>
+  <div class="card"><h3>2 · Hasil (bisa disunting)</h3>
+   ${d.kisi.length?`<label>Kisi-kisi</label><div class="tbl">${dtab(['No','Tujuan Pembelajaran','Level','Bentuk','No. Soal'],d.kisi)}</div>`:''}
+   <label>Soal</label><textarea data-sf="soal" placeholder="Hasil soal muncul di sini">${esc(d.soal)}</textarea>
+   <label>Kunci Jawaban</label><textarea data-sf="kunci">${esc(d.kunci)}</textarea>
+   <label>LKPD</label><textarea data-sf="lkpd">${esc(d.lkpd)}</textarea></div>
+  <div class="card"><h3>3 · Cetak</h3><div class="row"><button class="btn s" data-act="soalPrint" data-k="soal">🖨 Soal</button><button class="btn s" data-act="soalPrint" data-k="kunci">🖨 Kunci & Kisi-kisi</button><button class="btn s" data-act="soalPrint" data-k="lkpd">🖨 LKPD</button></div></div>
+  <div class="row"><button class="btn t" data-act="soalSave">💾 Simpan</button><button class="btn g" data-act="soalBack">← Daftar</button></div></div>`;
+  v.querySelectorAll('textarea').forEach(grow)
+}
+function soalPick(id){const r=db.rpp.find(x=>x.id===id),d=soalEdit;d.rppId=id;if(r){d.mapel=r.mapel;d.kelas=r.kelas;d.topik=r.topik;d.tp=r.tp||'';d.sumber_teks=r.sumber_teks||''}soalPage(view)}
+defs.soal={label:'Soal & LKPD',icon:'🧪',render:soalPage};
+
+/* ===== 4. CADANGAN: bagikan, Google Drive, pengingat ===== */
+function markBackup(){db.setting.lastBackup=Date.now();noAuto=true;save();noAuto=false}
+const bkText=()=>{const t=db.setting.lastBackup;if(!t)return'Belum pernah dicadangkan';const d=Math.floor((Date.now()-t)/864e5);return d<1?'Terakhir dicadangkan: hari ini':'Terakhir dicadangkan: '+d+' hari lalu'};
+function backupBanner(){if(pendBk&&db.setting.autoDrive)return `<div class="card" style="border-left:6px solid var(--t)"><b>☁️ Cadangan Drive tertunda</b><br><small class="mut">Izin Google perlu diperbarui. Ketuk tombol untuk mencadangkan sekarang.</small><div style="margin-top:8px"><button class="btn t s" data-act="driveUp">Cadangkan sekarang</button></div></div>`;const has=db.siswa.length||db.rpp.length||db.nilai.length,t=db.setting.lastBackup;if(!has||(t&&Date.now()-t<7*864e5))return'';return `<a class="card tilt" href="#/setting" style="border-left:6px solid var(--a)"><b>💾 Saatnya mencadangkan data</b><br><small class="mut">${bkText()}. Ketuk untuk membuka menu cadangan.</small></a>`}
+async function shareBackup(){
+  const name='cadangan-kelasku-'+today()+'.json',blob=new Blob([JSON.stringify(db)],{type:'application/json'});
+  try{const f=new File([blob],name,{type:'application/json'});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'Cadangan KelasKu'});markBackup();toast('Cadangan dibagikan ✅');return}}catch(e){if(e&&e.name==='AbortError')return}
+  dl(blob,name);markBackup();toast('Bagikan tidak didukung — file diunduh')
+}
+let gTok=null,gExp=0;
+function gAuth(){return new Promise((res,rej)=>{
+  if(gTok&&Date.now()<gExp)return res(gTok);
+  const id=(db.setting.gClientId||'').trim();if(!id)return rej(new Error('Isi Google Client ID dulu'));
+  if(!/^https?:/.test(location.protocol))return rej(new Error('Buka aplikasi dari alamat Cloudflare Anda (workers.dev) untuk memakai Drive'));
+  const go=()=>{try{google.accounts.oauth2.initTokenClient({client_id:id,scope:'https://www.googleapis.com/auth/drive.appdata',callback:r=>{if(r.error)rej(new Error('Izin Google ditolak'));else{gTok=r.access_token;gExp=Date.now()+(r.expires_in-60)*1000;res(gTok)}},error_callback:()=>rej(new Error('Jendela izin Google ditutup'))}).requestAccessToken()}catch(e){rej(e)}};
+  if(window.google&&google.accounts&&google.accounts.oauth2)go();else{const s=document.createElement('script');s.src='https://accounts.google.com/gsi/client';s.onload=go;s.onerror=()=>rej(new Error('Tidak ada koneksi internet'));document.head.appendChild(s)}})}
+const gH=t=>({Authorization:'Bearer '+t});
+async function driveFind(t){const r=await fetch("https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q="+encodeURIComponent("name='kelasku-backup.json'")+"&fields=files(id,modifiedTime)",{headers:gH(t)});if(!r.ok)throw new Error('Drive '+r.status+(r.status===403?' (aktifkan Google Drive API)':''));return(await r.json()).files||[]}
+async function driveUp(){
+  const t=await gAuth(),f=(await driveFind(t))[0],meta={name:'kelasku-backup.json'};if(!f)meta.parents=['appDataFolder'];
+  const bd='kk'+uid(),mp=`--${bd}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${bd}\r\nContent-Type: application/json\r\n\r\n${JSON.stringify(db)}\r\n--${bd}--`;
+  const r=await fetch(f?`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart`:'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{method:f?'PATCH':'POST',headers:{...gH(t),'content-type':'multipart/related; boundary='+bd},body:mp});
+  if(!r.ok)throw new Error('Drive '+r.status);markBackup()
+}
+async function driveDown(){
+  const t=await gAuth(),f=(await driveFind(t))[0];if(!f)throw new Error('Belum ada cadangan di Drive');
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,{headers:gH(t)});if(!r.ok)throw new Error('Drive '+r.status);
+  const j=await r.json();if(!j||typeof j!=='object'||!j.guru)throw new Error('Isi cadangan tidak valid');
+  if(!confirm('Ganti SEMUA data di perangkat ini dengan cadangan Drive?'))return false;
+  const keep=db.setting;db=Object.assign(structuredClone(DEF),j);db.setting=Object.assign({},j.setting,{gClientId:keep.gClientId,api:keep.api||(j.setting&&j.setting.api)});save();ini();return true
+}
+/* cadangan otomatis ke Drive: jalan selama aplikasi terbuka; bila izin kedaluwarsa, tampil tombol di Dashboard */
+let noAuto=false,autoT=null,pendBk=false;
+const driveReady=()=>!!(db.setting.autoDrive&&(db.setting.gClientId||'').trim()&&/^https?:/.test(location.protocol));
+function schedAuto(){if(noAuto||!driveReady())return;clearTimeout(autoT);autoT=setTimeout(autoBk,45000)}
+async function autoBk(){
+  if(!driveReady())return;
+  if(gTok&&Date.now()<gExp){try{await driveUp();pendBk=false;toast('Cadangan otomatis ke Drive ✅')}catch(e){pendBk=true;toast('Cadangan Drive tertunda: '+String(e.message||e).slice(0,60))}return}
+  pendBk=true;toast('Cadangan Drive tertunda — buka Dashboard lalu ketuk “Cadangkan sekarang”')
+}
+
 for(const k of ['siswa','mapel','asesmen','jadwal','nilai','jurnal'])defs[k].render=v=>renderMod(v,k);
-['dashboard','guru','siswa','mapel','rpp','asesmen','jadwal','absensi','nilai','jurnal','rekap','excel','wali','setting'].forEach(k=>PAGES[k]=defs[k]);
+['dashboard','guru','siswa','mapel','rpp','perangkat','soal','asesmen','jadwal','absensi','nilai','rapor','jurnal','rekap','excel','wali','setting'].forEach(k=>PAGES[k]=defs[k]);
 function rekap(v,mode){
   const D=DS();
   v.innerHTML=`<div class="wrap"><p class="mut" style="margin-bottom:14px">${mode==='xls'?'Unduh data dalam format Excel (.xls).':'Pratinjau lalu cetak lengkap dengan kop dan tanda tangan.'}</p><div class="grid">${Object.entries(D).map(([k,d])=>`<div class="card tilt"><div class="ib" style="margin-bottom:10px">${d.icon}</div><b>${d.label}</b><small style="display:block;margin-bottom:12px">${d.rows.length} baris</small><div class="row">${mode==='xls'?`<button class="btn t s" data-act="xls" data-k="${k}">⬇ Unduh</button>`:`<button class="btn s" data-act="prev" data-k="${k}">👁 Lihat</button><button class="btn a s" data-act="print" data-k="${k}">🖨 Cetak</button>`}</div></div>`).join('')}</div><div class="card tbl" id="prev" hidden></div></div>`;
@@ -402,19 +623,80 @@ prev:d=>{const x=DS()[d.k],p=$('#prev');p.hidden=false;p.innerHTML=`<h3>${x.labe
 print:d=>{const x=DS()[d.k];doPrint(`<h3 style="text-align:center;margin-bottom:8px">${esc(x.label.toUpperCase())}</h3>`+tableHtml(x.head,x.rows))},
 xls:d=>downloadXls(d.k),
 saveApi:()=>{db.setting.api=$('#api').value.trim()||'/api/generate';save();toast('Tersimpan ✅')},
-backup:()=>dl(new Blob([JSON.stringify(db,null,1)],{type:'application/json'}),`cadangan-kelasku-${today()}.json`),
+backup:()=>{dl(new Blob([JSON.stringify(db,null,1)],{type:'application/json'}),`cadangan-kelasku-${today()}.json`);markBackup()},
 reset:()=>{if(confirm('Hapus SEMUA data di perangkat ini? Pastikan sudah membuat cadangan.')){db=structuredClone(DEF);save();ini();go()}}
 };
+Object.assign(ACT,{
+/* rapor */
+raporAI:(d,b)=>busy(b,'⏳ AI menyusun…',async()=>{const r=await raporGen(raporSid);toast(r==='ai'?'Deskripsi selesai ✨':r?'AI belum tersambung — memakai template offline':'Belum ada nilai siswa ini');go()}),
+raporAll:(d,b)=>busy(b,'⏳ Memproses…',async()=>{const S=sortSiswa();let i=0,ai=0,n=0;for(const s of S){b.textContent=`⏳ ${++i}/${S.length}…`;const r=await raporGen(s.id);if(r)n++;if(r==='ai')ai++}toast(`${n} siswa selesai (${ai} disusun AI)`);go()}),
+raporPrint:()=>printRaw(`<div>${kop()}${raporHtml(raporSid)}${ttd()}</div>`),
+raporPrintAll:()=>{const S=sortSiswa().filter(s=>raporData(s.id).length);if(!S.length){toast('Belum ada nilai');return}printRaw(S.map(s=>`<div class="pb">${kop()}${raporHtml(s.id)}${ttd()}</div>`).join(''))},
+/* perangkat ajar */
+perNew:()=>{perEdit=blankPer();go()},
+perOpen:d=>{perEdit=Object.assign(blankPer(),structuredClone(db.perangkat.find(x=>x.id===d.id)));go()},
+perDel:d=>{if(confirm('Hapus perangkat ajar ini?')){db.perangkat=db.perangkat.filter(x=>x.id!==d.id);save();go()}},
+perBack:()=>{perEdit=null;go()},
+perSave:()=>{const p=perEdit;if(!p.mapel.trim()||!p.items.length){toast('Isi mata pelajaran dan susun topik dulu');return}p.updated=today();if(!p.id){p.id=uid();db.perangkat.push(structuredClone(p))}else db.perangkat=db.perangkat.map(x=>x.id===p.id?structuredClone(p):x);save();toast('Perangkat ajar tersimpan ✅')},
+perFit:()=>{distJp(perEdit.items,perTot(perEdit));perPage(view)},
+perItemAdd:()=>{const it=newItem('Topik baru');perEdit.items.push(it);perPage(view)},
+perItemDel:d=>{perEdit.items.splice(+d.i,1);perPage(view)},
+perPrint:d=>{if(!perEdit.items.length){toast('Susun topik dulu');return}doPrint((d.k==='promes'?'<style>@page{size:A4 landscape;margin:10mm}</style>':'')+PERDOC[d.k](perEdit))},
+perLocal:()=>{const p=perEdit,t=parseTopik(p.topikTxt);if(!t.length){toast('Isi daftar topik dulu (satu per baris)');return}p.items=t.map(x=>Object.assign(newItem(x.judul),{jp:x.jp}));distJp(p.items,perTot(p));perPage(view);toast('Tersusun dari daftar topik — lengkapi tujuan & KKTP bila perlu')},
+perAI:(d,b)=>busy(b,'⏳ AI menyusun…',async()=>{
+  const p=perEdit;if(!p.mapel.trim()){toast('Isi mata pelajaran dulu');return}
+  try{
+    const r=await tugas('perangkat',{mapel:p.mapel,kelas:p.kelas,fase:faseOf(p.kelas),semester:p.semester,jpMinggu:+p.jpMinggu,minggu:+p.minggu,totalJp:perTot(p),topik:parseTopik(p.topikTxt).map(x=>x.judul),cp:p.cp},85000);
+    const k=x=>norm(x).trim(),items=asArr(r.items).map(x=>({judul:k(x.judul),materi:k(x.materi)||k(x.judul),tp:k(x.tp),jp:+x.jp||0,kktp:{perlu:k(x.kktp&&x.kktp.perlu),cukup:k(x.kktp&&x.kktp.cukup),baik:k(x.kktp&&x.kktp.baik),sangat:k(x.kktp&&x.kktp.sangat)},asesmen:k(x.asesmen)})).filter(x=>x.judul);
+    if(!items.length)throw new Error('Hasil AI kosong');distJp(items,perTot(p));p.items=items;toast('Perangkat ajar tersusun ✨ — periksa lalu simpan')
+  }catch(e){
+    const t=parseTopik(p.topikTxt);
+    if(t.length){p.items=t.map(x=>Object.assign(newItem(x.judul),{jp:x.jp}));distJp(p.items,perTot(p));toast('AI belum tersambung — disusun dari daftar topik (template)')}
+    else toast('AI belum tersambung. Isi daftar topik lalu pilih “Susun dari daftar topik”.')
+  }
+  perPage(view)}),
+/* soal & lkpd */
+soalNew:()=>{soalEdit=blankSoal();go()},
+soalOpen:d=>{soalEdit=Object.assign(blankSoal(),structuredClone(db.soal.find(x=>x.id===d.id)));go()},
+soalDel:d=>{if(confirm('Hapus soal ini?')){db.soal=db.soal.filter(x=>x.id!==d.id);save();go()}},
+soalBack:()=>{soalEdit=null;go()},
+soalSave:()=>{const s=soalEdit;if(!s.topik.trim()){toast('Isi topik dulu');return}s.updated=today();if(!s.id){s.id=uid();db.soal.push(structuredClone(s))}else db.soal=db.soal.map(x=>x.id===s.id?structuredClone(s):x);save();toast('Soal tersimpan ✅')},
+soalPrint:d=>{const s=soalEdit;if(!(s[d.k==='kunci'?'kunci':d.k]||'').trim()){toast('Bagian ini masih kosong');return}doPrint(SOALDOC[d.k](s))},
+soalAI:(d,b)=>busy(b,'⏳ AI menyusun soal…',async()=>{
+  const s=soalEdit;if(!s.topik.trim()){toast('Isi topik dulu');return}
+  try{const r=await tugas('soal',{mapel:s.mapel,kelas:s.kelas,fase:faseOf(s.kelas),topik:s.topik,tp:s.tp,sumber_teks:(s.sumber_teks||'').slice(0,5000),pg:+s.pg||0,isian:+s.isian||0,uraian:+s.uraian||0,level:s.level},95000);buildSoal(s,r);if(!s.soal)throw new Error('Hasil AI kosong');toast('Soal selesai ✨ — periksa kunci jawabannya')}
+  catch(e){toast('Gagal membuat soal: '+String(e.message||e).slice(0,80)+' (butuh AI online)')}
+  soalPage(view)}),
+lkpdAI:(d,b)=>busy(b,'⏳ AI menyusun LKPD…',async()=>{
+  const s=soalEdit;if(!s.topik.trim()){toast('Isi topik dulu');return}
+  try{const r=await tugas('lkpd',{mapel:s.mapel,kelas:s.kelas,fase:faseOf(s.kelas),topik:s.topik,tp:s.tp,sumber_teks:(s.sumber_teks||'').slice(0,4000)},80000);buildLkpd(s,r);toast('LKPD selesai ✨')}
+  catch(e){toast('Gagal membuat LKPD: '+String(e.message||e).slice(0,80)+' (butuh AI online)')}
+  soalPage(view)}),
+/* pengaturan & cadangan */
+saveKktp:()=>{db.setting.kktp=Math.min(100,Math.max(0,+$('#kktp').value||70));save();toast('Batas ketuntasan tersimpan ✅')},
+shareBackup:()=>shareBackup(),
+saveGid:()=>{db.setting.gClientId=$('#gid').value.trim();gTok=null;save();toast('Client ID tersimpan ✅')},
+driveUp:(d,b)=>busy(b,'⏳ Mengunggah…',async()=>{try{if($('#gid'))db.setting.gClientId=$('#gid').value.trim();await driveUp();pendBk=false;toast('Cadangan tersimpan di Google Drive ✅');go()}catch(e){toast(String(e.message||e).slice(0,110))}}),
+driveDown:(d,b)=>busy(b,'⏳ Mengunduh…',async()=>{try{if($('#gid'))db.setting.gClientId=$('#gid').value.trim();if(await driveDown()){toast('Data dipulihkan dari Drive ✅');go()}}catch(e){toast(String(e.message||e).slice(0,110))}})
+});
 const view=$('#view');
 view.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b&&ACT[b.dataset.act])ACT[b.dataset.act](b.dataset,b)});
 view.addEventListener('input',e=>{const t=e.target;
   if(t.dataset.f&&rppEdit){rppEdit[t.dataset.f]=t.value;if(t.tagName==='TEXTAREA')grow(t)}
-  if(t.dataset.r&&rppEdit){const [i,q]=t.dataset.r.split('.');rppEdit.rubrik[+i][q]=t.value;grow(t)}});
+  if(t.dataset.r&&rppEdit){const [i,q]=t.dataset.r.split('.');rppEdit.rubrik[+i][q]=t.value;grow(t)}
+  if(t.dataset.pi&&perEdit)setPi(t);
+  if(t.dataset.pf&&perEdit){perEdit[t.dataset.pf]=t.value;if(t.tagName==='TEXTAREA')grow(t)}
+  if(t.dataset.sf&&soalEdit){soalEdit[t.dataset.sf]=t.value;if(t.tagName==='TEXTAREA')grow(t)}
+  if(t.dataset.rd||t.dataset.rw)raporInput(t)});
 view.addEventListener('change',e=>{const t=e.target;
   if(t.dataset.f==='kelas'&&rppEdit){rppEdit.kelas=t.value;rppPage(view)}
   if(t.dataset.auto&&rppEdit){rppEdit.dplAuto=t.checked;rppPage(view)}
   if((t.id==='fcam'||t.id==='fup')&&rppEdit){addSources([...t.files]);t.value=''}
   if(t.dataset.dpl&&rppEdit){const s=new Set(rppEdit.dpl);t.checked?s.add(+t.dataset.dpl):s.delete(+t.dataset.dpl);rppEdit.dpl=[...s]}
+  if(t.dataset.autod!==undefined){db.setting.autoDrive=t.checked;save();toast(t.checked?((db.setting.gClientId||'').trim()?'Cadangan otomatis aktif ✅':'Aktif, tetapi isi Google Client ID dulu'):'Cadangan otomatis dimatikan')}
+  if(t.id==='rsid'){raporSid=t.value;go()}
+  if(t.id==='srpp'&&soalEdit)soalPick(t.value);
+  if(perEdit&&((t.dataset.pi&&/\.jp$/.test(t.dataset.pi))||t.dataset.pf==='jpMinggu'||t.dataset.pf==='minggu'))perPage(view);
   if(t.dataset.cat){db.catatan[t.dataset.cat]=t.value;save();toast('Catatan tersimpan')}});
 
 /* ===== navigasi ===== */
@@ -422,7 +704,7 @@ const nav=$('#drawer');
 nav.innerHTML=Object.entries(PAGES).map(([k,p])=>`<div class="ni" data-p="${k}" role="link" tabindex="0"><span class="ic">${p.icon}</span>${p.label}</div>`).join('');
 nav.insertAdjacentHTML('beforeend','<div class="ncr"><b>KelasKu</b><br>Design by Akhmad Fitra Harry, S.Pd</div>');
 const closeNav=()=>{nav.classList.remove('open');$('#ov').classList.remove('on')};
-nav.addEventListener('click',e=>{const n=e.target.closest('.ni');if(!n)return;const p=n.dataset.p;if(p==='rpp')rppEdit=null;if(location.hash==='#/'+p){go()}else location.hash='#/'+p;closeNav()});
+nav.addEventListener('click',e=>{const n=e.target.closest('.ni');if(!n)return;const p=n.dataset.p;if(p==='rpp')rppEdit=null;if(p==='perangkat')perEdit=null;if(p==='soal')soalEdit=null;if(location.hash==='#/'+p){go()}else location.hash='#/'+p;closeNav()});
 $('#burger').onclick=()=>{nav.classList.toggle('open');$('#ov').classList.toggle('on')};
 $('#ov').onclick=closeNav;
 $('#mc').onclick=()=>$('#modal').classList.remove('on');
@@ -442,6 +724,7 @@ document.addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;co
 document.addEventListener('pointerleave',e=>{if(e.target.classList&&e.target.classList.contains('tilt'))e.target.style.transform=''},true);
 $('#bg').innerHTML=[[6,12,46],[82,8,64],[90,52,38],[8,62,58],[48,84,44],[70,78,30]].map(([l,t,s],i)=>`<div class="fl" style="left:${l}%;top:${t}%;animation-delay:-${i*1.4}s"><div class="cube bg" style="--s:${s}px;animation-duration:${14+i*3}s">${'<i></i>'.repeat(6)}</div></div>`).join('');
 
+if(driveReady()&&(db.siswa.length||db.rpp.length||db.nilai.length)&&(!db.setting.lastBackup||Date.now()-db.setting.lastBackup>864e5))pendBk=true;
 ini();go();
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>

@@ -1,6 +1,10 @@
-name = "kelasku-3d"
-pages_build_output_dir = "."
+name = "administrasi-kelasku"
+main = "src/worker.js"
 compatibility_date = "2026-10-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
 
 [ai]
 binding = "AI"

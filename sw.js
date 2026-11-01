@@ -1,4 +1,4 @@
-const CACHE = 'kelasku-v2';
+const CACHE = 'kelasku-v5';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg'];
 
 self.addEventListener('install', (e) => {
